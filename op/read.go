@@ -13,6 +13,23 @@ func (r *ReadRequest) Len() int {
 	return r.Key.len()
 }
 
+func (r *ReadRequest) WriteEnvelope(w io.Writer) (int64, error) {
+	var total int64
+
+	op := READ
+	if _, err := op.WriteTo(w); err != nil {
+		return total, err
+	}
+
+	total += 1
+	if err := binary.Write(w, binary.BigEndian, uint32(r.Len()+1)); err != nil {
+		return total, err
+	}
+
+	total += 4
+	return total, nil
+}
+
 func (r *ReadRequest) WriteTo(w io.Writer) (int64, error) {
 	var total int64
 
