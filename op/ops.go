@@ -8,8 +8,9 @@ import (
 type OP uint8
 
 const (
-	READ OP = iota + 1
-	WRITE
+	READ     OP = iota + 1 // read request opcode
+	WRITE                  // write request opcode
+	RESPONSE               // response opcode
 )
 
 func (o OP) WriteTo(w io.Writer) (int64, error) {
