@@ -2,6 +2,7 @@ package op
 
 import (
 	"encoding/binary"
+	"errors"
 	"io"
 )
 
@@ -46,5 +47,33 @@ func (v *Value) WriteTo(w io.Writer) (int64, error) {
 	}
 
 	total += n
+	return total, nil
+}
+
+func (v *Value) ReadFrom(r io.Reader) (int64, error) {
+	var total int64
+
+	op := new(OP)
+	if _, err := op.ReadFrom(r); err != nil {
+		return total, err
+	}
+
+	total += 1
+	if *op != RESPONSE {
+		return total, errors.New("bad opcode")
+	}
+
+	var valLen uint8
+	if err := binary.Read(r, binary.BigEndian, &valLen); err != nil {
+		return total, err
+	}
+
+	total += 1
+	val := new(Value)
+	if _, err := val.readFrom(r, int64(valLen)); err != nil {
+		return total, err
+	}
+
+	total += int64(valLen)
 	return total, nil
 }
