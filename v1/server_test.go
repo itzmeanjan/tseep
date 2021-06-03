@@ -66,5 +66,21 @@ func TestServerV1(t *testing.T) {
 		t.Fatalf("Expected to receive `%s`, received `%s`\n", wVal, *resp)
 	}
 
+	if _, err := rReq.WriteEnvelope(conn); err != nil {
+		t.Fatalf("Failed to write request : %s\n", err.Error())
+	}
+
+	if _, err := rReq.WriteTo(conn); err != nil {
+		t.Fatalf("Failed to write request body : %s\n", err.Error())
+	}
+
+	if _, err := resp.ReadFrom(conn); err != nil {
+		t.Fatalf("Failed to read response : %s\n", err.Error())
+	}
+
+	if !bytes.Equal(wVal, *resp) {
+		t.Fatalf("Expected to receive `%s`, received `%s`\n", wVal, *resp)
+	}
+
 	cancel()
 }
