@@ -69,8 +69,7 @@ func (v *Value) ReadFrom(r io.Reader) (int64, error) {
 	}
 
 	total += 1
-	val := new(Value)
-	if _, err := val.readFrom(r, int64(valLen)); err != nil {
+	if _, err := v.readFrom(r, int64(valLen)); err != nil {
 		return total, err
 	}
 

@@ -36,7 +36,7 @@ func TestServerV1(t *testing.T) {
 	}
 
 	if _, err := rReq.WriteTo(conn); err != nil {
-		t.Fatalf("Failed to write read request body : %s\n", err.Error())
+		t.Fatalf("Failed to write request body : %s\n", err.Error())
 	}
 
 	resp := new(op.Value)
@@ -46,6 +46,24 @@ func TestServerV1(t *testing.T) {
 
 	if !bytes.Equal(*resp, []byte("")) {
 		t.Fatalf("Expected to receive empty response\n")
+	}
+
+	wVal := op.Value("world")
+	wReq := op.WriteRequest{Key: &key, Value: &wVal}
+	if _, err := wReq.WriteEnvelope(conn); err != nil {
+		t.Fatalf("Failed to write request envelope : %s\n", err.Error())
+	}
+
+	if _, err := wReq.WriteTo(conn); err != nil {
+		t.Fatalf("Failed to write request body : %s\n", err.Error())
+	}
+
+	if _, err := resp.ReadFrom(conn); err != nil {
+		t.Fatalf("Failed to read response : %s\n", err.Error())
+	}
+
+	if !bytes.Equal(*resp, wVal) {
+		t.Fatalf("Expected to receive `%s`, received `%s`\n", wVal, *resp)
 	}
 
 	cancel()
