@@ -32,14 +32,14 @@ func (o *OP) ReadFrom(r io.Reader) (int64, error) {
 	return 1, nil
 }
 
-func ReadEnvelope(r io.Reader) (OP, uint32, error) {
+func ReadEnvelope(r io.Reader) (OP, uint16, error) {
 	op := new(OP)
 
 	if _, err := op.ReadFrom(r); err != nil {
 		return 0, 0, err
 	}
 
-	var bodyLength uint32
+	var bodyLength uint16
 	if err := binary.Read(r, binary.BigEndian, &bodyLength); err != nil {
 		return *op, 0, err
 	}

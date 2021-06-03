@@ -23,11 +23,11 @@ func (w *WriteRequest) WriteEnvelope(wr io.Writer) (int64, error) {
 	}
 
 	total += 1
-	if err := binary.Write(wr, binary.BigEndian, uint32(w.Len()+2)); err != nil {
+	if err := binary.Write(wr, binary.BigEndian, uint16(w.Len()+2)); err != nil {
 		return total, err
 	}
 
-	total += 4
+	total += 2
 	return total, nil
 }
 

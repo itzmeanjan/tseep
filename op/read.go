@@ -22,11 +22,11 @@ func (r *ReadRequest) WriteEnvelope(w io.Writer) (int64, error) {
 	}
 
 	total += 1
-	if err := binary.Write(w, binary.BigEndian, uint32(r.Len()+1)); err != nil {
+	if err := binary.Write(w, binary.BigEndian, uint16(r.Len()+1)); err != nil {
 		return total, err
 	}
 
-	total += 4
+	total += 2
 	return total, nil
 }
 
