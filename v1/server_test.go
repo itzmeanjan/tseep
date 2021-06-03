@@ -3,6 +3,7 @@ package v1_test
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"net"
 	"testing"
 	"time"
@@ -13,21 +14,29 @@ import (
 
 func TestServerV1(t *testing.T) {
 	proto := "tcp"
-	addr := "127.0.0.1:13000"
+	addr := "127.0.0.1:0"
 	ctx, cancel := context.WithCancel(context.Background())
 	server, err := v1.New(ctx, proto, addr)
 	if err != nil {
 		t.Fatalf("Failed to start TCP server : %s\n", err.Error())
 	}
 
+	testClientFlow(t, ctx, proto, server.Addr)
+	cancel()
+}
+
+func testClientFlow(t *testing.T, ctx context.Context, proto string, addr string) {
 	d := net.Dialer{
 		Timeout:  10 * time.Second,
 		Deadline: time.Now().Add(20 * time.Second),
 	}
-	conn, err := d.DialContext(ctx, proto, server.Addr)
+	conn, err := d.DialContext(ctx, proto, addr)
 	if err != nil {
 		t.Fatalf("Failed to dial TCP server : %s\n", err.Error())
 	}
+	defer func() {
+		conn.Close()
+	}()
 
 	key := op.Key("hello")
 	rReq := op.ReadRequest{Key: &key}
@@ -81,6 +90,75 @@ func TestServerV1(t *testing.T) {
 	if !bytes.Equal(wVal, *resp) {
 		t.Fatalf("Expected to receive `%s`, received `%s`\n", wVal, *resp)
 	}
+}
+
+func BenchmarkServerV1(b *testing.B) {
+	benchmarkServerNClients(b)
+}
+
+func benchmarkServerNClients(b *testing.B) {
+	proto := "tcp"
+	addr := "127.0.0.1:0"
+	ctx, cancel := context.WithCancel(context.Background())
+	server, err := v1.New(ctx, proto, addr)
+	if err != nil {
+		b.Fatalf("Failed to start TCP server : %s\n", err.Error())
+	}
+
+	b.ReportAllocs()
+	b.SetBytes(259 + 2 + 515 + 257)
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		d := net.Dialer{
+			Timeout:  10 * time.Second,
+			Deadline: time.Now().Add(20 * time.Second),
+		}
+		conn, err := d.DialContext(ctx, proto, server.Addr)
+		if err != nil {
+			b.Fatalf("Failed to dial TCP server : %s\n", err.Error())
+		}
+
+		benchmarkClientFlow(b, conn, i+1)
+	}
 
 	cancel()
+}
+
+func benchmarkClientFlow(b *testing.B, conn net.Conn, idx int) {
+	defer conn.Close()
+
+	key := op.Key(fmt.Sprintf("%255d", idx))
+	rReq := op.ReadRequest{Key: &key}
+	if _, err := rReq.WriteEnvelope(conn); err != nil {
+		b.Errorf("Failed to write request envelope : %s\n", err.Error())
+	}
+
+	if _, err := rReq.WriteTo(conn); err != nil {
+		b.Errorf("Failed to write request body : %s\n", err.Error())
+	}
+
+	resp := new(op.Value)
+	if _, err := resp.ReadFrom(conn); err != nil {
+		b.Errorf("Failed to read response : %s\n", err.Error())
+	}
+
+	wVal := op.Value(fmt.Sprintf("%255d", idx))
+	wReq := op.WriteRequest{Key: &key, Value: &wVal}
+	if _, err := wReq.WriteEnvelope(conn); err != nil {
+		b.Errorf("Failed to write request envelope : %s\n", err.Error())
+	}
+
+	if _, err := wReq.WriteTo(conn); err != nil {
+		b.Errorf("Failed to write request body : %s\n", err.Error())
+	}
+
+	if _, err := resp.ReadFrom(conn); err != nil {
+		b.Errorf("Failed to read response : %s\n", err.Error())
+	}
+
+	if !bytes.Equal(*resp, wVal) {
+		b.Errorf("Expected to receive `%s`, received `%s`\n", wVal, *resp)
+	}
+
 }

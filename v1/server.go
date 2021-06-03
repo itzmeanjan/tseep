@@ -53,10 +53,13 @@ func (s *Server) Start(ctx context.Context, done chan struct{}) {
 		default:
 			conn, err := s.Listener.Accept()
 			if err != nil {
+				log.Printf("Server not listening : %s\n", err.Error())
 				return
 			}
 
-			go s.handleConnection(ctx, conn)
+			func(conn net.Conn) {
+				go s.handleConnection(ctx, conn)
+			}(conn)
 		}
 	}
 }
