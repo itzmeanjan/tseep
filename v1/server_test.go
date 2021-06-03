@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"math/rand"
 	"net"
 	"testing"
 	"time"
@@ -109,7 +110,7 @@ func benchmarkServerNClients(b *testing.B) {
 	b.SetBytes(259 + 2 + 515 + 257)
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	b.RunParallel(func(p *testing.PB) {
 		d := net.Dialer{
 			Timeout:  10 * time.Second,
 			Deadline: time.Now().Add(20 * time.Second),
@@ -118,16 +119,19 @@ func benchmarkServerNClients(b *testing.B) {
 		if err != nil {
 			b.Fatalf("Failed to dial TCP server : %s\n", err.Error())
 		}
+		defer func() {
+			conn.Close()
+		}()
 
-		benchmarkClientFlow(b, conn, i+1)
-	}
+		for p.Next() {
+			benchmarkClientFlow(b, conn, 1+rand.Intn(255))
+		}
+	})
 
 	cancel()
 }
 
 func benchmarkClientFlow(b *testing.B, conn net.Conn, idx int) {
-	defer conn.Close()
-
 	key := op.Key(fmt.Sprintf("%255d", idx))
 	rReq := op.ReadRequest{Key: &key}
 	if _, err := rReq.WriteEnvelope(conn); err != nil {
@@ -160,5 +164,4 @@ func benchmarkClientFlow(b *testing.B, conn net.Conn, idx int) {
 	if !bytes.Equal(*resp, wVal) {
 		b.Errorf("Expected to receive `%s`, received `%s`\n", wVal, *resp)
 	}
-
 }
