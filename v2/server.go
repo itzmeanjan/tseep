@@ -28,6 +28,37 @@ type readBuffer struct {
 	opcode       op.OP
 }
 
+func New(ctx context.Context, proto string, addr string) (*Server, error) {
+	lis, err := net.Listen(proto, addr)
+	if err != nil {
+		return nil, err
+	}
+
+	watcher, err := gaio.NewWatcher()
+	if err != nil {
+		return nil, err
+	}
+
+	srv := Server{
+		KV:             make(map[op.Key]op.Value),
+		KVLock:         &sync.RWMutex{},
+		InProgressRead: make(map[net.Conn]*readBuffer),
+		ReadLock:       &sync.RWMutex{},
+		Listener:       lis,
+		Addr:           lis.Addr().String(),
+		Watcher:        watcher,
+	}
+
+	lisChan := make(chan struct{})
+	watcherChan := make(chan struct{})
+	go srv.Listen(ctx, lisChan)
+	go srv.Watch(ctx, watcherChan)
+	<-lisChan
+	<-watcherChan
+
+	return &srv, nil
+}
+
 func (s *Server) Listen(ctx context.Context, done chan struct{}) {
 	close(done)
 	defer func() {
