@@ -148,7 +148,7 @@ func benchmarkServerNClients(b *testing.B) {
 	}
 
 	b.ReportAllocs()
-	b.SetBytes(259 + 2 + 515 + 257)
+	b.SetBytes(2 * (259 + 2 + 515 + 257))
 	b.ResetTimer()
 
 	b.RunParallel(func(p *testing.PB) {
@@ -163,17 +163,17 @@ func benchmarkServerNClients(b *testing.B) {
 		defer func() {
 			conn.Close()
 		}()
+		w := new(bytes.Buffer)
 
 		for p.Next() {
-			benchmarkClientFlow(b, conn, 1+rand.Intn(255))
+			benchmarkClientFlow(b, conn, 1+rand.Intn(255), w)
 		}
 	})
 
 	cancel()
 }
 
-func benchmarkClientFlow(b *testing.B, conn net.Conn, idx int) {
-	w := new(bytes.Buffer)
+func benchmarkClientFlow(b *testing.B, conn net.Conn, idx int, w *bytes.Buffer) {
 	key := op.Key(fmt.Sprintf("%255d", idx))
 	rReq := op.ReadRequest{Key: &key}
 
