@@ -8,7 +8,7 @@ import (
 
 type Value []byte
 
-func (v *Value) len() int {
+func (v *Value) Len() int {
 	return len(*v)
 }
 
@@ -36,7 +36,7 @@ func (v *Value) WriteTo(w io.Writer) (int64, error) {
 	}
 
 	total += 1
-	if err := binary.Write(w, binary.BigEndian, uint8(v.len())); err != nil {
+	if err := binary.Write(w, binary.BigEndian, uint8(v.Len())); err != nil {
 		return total, err
 	}
 

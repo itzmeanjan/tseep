@@ -10,6 +10,7 @@ import (
 
 	"github.com/itzmeanjan/tseep/op"
 	"github.com/xtaci/gaio"
+	pool "gopkg.in/thejerf/gomempool.v1"
 )
 
 type Server struct {
@@ -20,10 +21,11 @@ type Server struct {
 	KVLock         *sync.RWMutex
 	InProgressRead map[net.Conn]*readBuffer
 	ReadLock       *sync.RWMutex
+	Pool           *pool.Pool
 }
 
 type readBuffer struct {
-	buf          []byte
+	allocator    pool.Allocator
 	envelopeRead bool
 	opcode       op.OP
 }
@@ -47,6 +49,7 @@ func New(ctx context.Context, proto string, addr string) (*Server, error) {
 		Listener:       lis,
 		Addr:           lis.Addr().String(),
 		Watcher:        watcher,
+		Pool:           pool.New(1<<16, 1<<24, 1<<4),
 	}
 
 	lisChan := make(chan struct{})
@@ -79,12 +82,12 @@ func (s *Server) Listen(ctx context.Context, done chan struct{}) {
 				return
 			}
 
-			envelopeBuf := make([]byte, 3)
+			allocator := s.Pool.GetNewAllocator()
 			s.ReadLock.Lock()
-			s.InProgressRead[conn] = &readBuffer{buf: envelopeBuf}
+			s.InProgressRead[conn] = &readBuffer{allocator: allocator}
 			s.ReadLock.Unlock()
 
-			if err := s.Watcher.Read(ctx, conn, envelopeBuf); err != nil {
+			if err := s.Watcher.Read(ctx, conn, allocator.Allocate(3)); err != nil {
 				return
 			}
 		}
@@ -158,7 +161,8 @@ func (s *Server) handleRead(ctx context.Context, result gaio.OpResult) error {
 		v.opcode = opcode
 		v.envelopeRead = true
 
-		return s.Watcher.Read(ctx, result.Conn, make([]byte, bodyLen))
+		v.allocator.Return()
+		return s.Watcher.Read(ctx, result.Conn, v.allocator.Allocate(uint64(bodyLen)))
 	}
 
 	r := bytes.NewReader(result.Buffer[:])
@@ -201,6 +205,7 @@ func (s *Server) handleRead(ctx context.Context, result gaio.OpResult) error {
 
 	}
 
+	v.allocator.Return()
 	return s.Watcher.Write(ctx, result.Conn, w.Bytes())
 }
 
@@ -215,5 +220,5 @@ func (s *Server) handleWrite(ctx context.Context, result gaio.OpResult) error {
 	v := s.InProgressRead[result.Conn]
 	v.envelopeRead = false
 
-	return s.Watcher.Read(ctx, result.Conn, v.buf)
+	return s.Watcher.Read(ctx, result.Conn, v.allocator.Allocate(3))
 }

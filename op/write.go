@@ -11,7 +11,7 @@ type WriteRequest struct {
 }
 
 func (w *WriteRequest) Len() int {
-	return w.Key.len() + w.Value.len()
+	return w.Key.len() + w.Value.Len()
 }
 
 func (w *WriteRequest) WriteEnvelope(wr io.Writer) (int64, error) {
@@ -45,7 +45,7 @@ func (w *WriteRequest) WriteTo(wr io.Writer) (int64, error) {
 	}
 
 	total += n
-	if err := binary.Write(wr, binary.BigEndian, uint8(w.Value.len())); err != nil {
+	if err := binary.Write(wr, binary.BigEndian, uint8(w.Value.Len())); err != nil {
 		return total, err
 	}
 

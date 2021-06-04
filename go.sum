@@ -1,2 +1,4 @@
 github.com/xtaci/gaio v1.2.10 h1:AjZy43b3ZdlaCnyu0fPaUrAVXu/SV1n8zWmNlKQQuXw=
 github.com/xtaci/gaio v1.2.10/go.mod h1:rJMerwiLCLnKa14YTM/sRggTPrnBZrlCg9U3DnV5VBE=
+gopkg.in/thejerf/gomempool.v1 v1.0.0 h1:fmjwwGnbEaqditlQ+SDkizkmn3zSHTUULdsedwOkMNY=
+gopkg.in/thejerf/gomempool.v1 v1.0.0/go.mod h1:iPrwu4jt36DKcedFEQZYgXziB8iKWupeUQnOljm8/Rs=
