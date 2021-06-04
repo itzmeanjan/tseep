@@ -30,15 +30,14 @@ func New(ctx context.Context, proto string, addr string) (*Server, error) {
 	}
 
 	done := make(chan struct{})
-	go srv.Start(ctx, done)
+	go srv.Listen(ctx, done)
 	<-done
 
 	return &srv, nil
 }
 
-func (s *Server) Start(ctx context.Context, done chan struct{}) {
+func (s *Server) Listen(ctx context.Context, done chan struct{}) {
 	close(done)
-
 	defer func() {
 		if err := s.Listener.Close(); err != nil {
 			log.Printf("Failed to close listener : %s\n", err.Error())
