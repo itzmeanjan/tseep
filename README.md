@@ -22,7 +22,7 @@ In this project I experiment with mainly aforementioned two kinds of writing TCP
 
 - [**v1**](#v1) - TCP server with one go-routine listening for new connections & each connection being handled in its own go-routine.
 
-- [**v2**](#v2) - TCP server with one go-routine listening for new connections & another watching READ, WRITE events on accepted connection's file descriptors.
+- [**v2**](#v2) - TCP server with one go-routine listening for new connections & another watching READ, WRITE events on accepted connection's file descriptors
 
 ### :: v1 ::
 
@@ -64,7 +64,7 @@ PASS
 ok  	github.com/itzmeanjan/tseep/v1	13.545s
 ```
 
-- Run stress testing with 1k, 2k, 4k, 8k concurrent connections
+- Run stress testing with {1k, 2k, 4k, 8k} concurrent connections
 
 ```bash
 go test -v -tags stress -run=8k # or 1k, 2k, 4k
@@ -76,4 +76,58 @@ popd
 --- PASS: TestServerV1_Stress_8k (2.56s)
 PASS
 ok  	github.com/itzmeanjan/tseep/v1	2.723
+```
+
+### :: v2 ::
+
+- Run test with
+
+```bash
+pushd v2
+go test -v
+```
+
+```bash
+=== RUN   TestServerV2
+--- PASS: TestServerV2 (0.00s)
+PASS
+ok  	github.com/itzmeanjan/tseep/v2	0.861s
+```
+
+- Run benchmarking of 8 rounds using all CPU cores
+
+```bash
+go test -v -run=xxx -bench V2 -count 8
+```
+
+```bash
+goos: darwin
+goarch: amd64
+pkg: github.com/itzmeanjan/tseep/v2
+cpu: Intel(R) Core(TM) i5-8279U CPU @ 2.40GHz
+BenchmarkServerV2
+BenchmarkServerV2-8   	   34479	     32831 ns/op	  62.93 MB/s	    6193 B/op	      72 allocs/op
+BenchmarkServerV2-8   	   33703	     33781 ns/op	  61.16 MB/s	    6186 B/op	      72 allocs/op
+BenchmarkServerV2-8   	   34296	     32974 ns/op	  62.66 MB/s	    6185 B/op	      72 allocs/op
+BenchmarkServerV2-8   	   35888	     33468 ns/op	  61.73 MB/s	    6183 B/op	      72 allocs/op
+BenchmarkServerV2-8   	   36135	     32762 ns/op	  63.06 MB/s	    6181 B/op	      72 allocs/op
+BenchmarkServerV2-8   	   35479	     35970 ns/op	  57.44 MB/s	    6185 B/op	      72 allocs/op
+BenchmarkServerV2-8   	   31009	     36539 ns/op	  56.54 MB/s	    6186 B/op	      72 allocs/op
+BenchmarkServerV2-8   	   33430	     35943 ns/op	  57.48 MB/s	    6189 B/op	      72 allocs/op
+PASS
+ok  	github.com/itzmeanjan/tseep/v2	12.639s
+```
+
+- Run stress testing with {1k, 2k, 4k, 8k} concurrent connections
+
+```bash
+go test -v -tags stress -run=8k
+popd
+```
+
+```bash
+=== RUN   TestServerV2_Stress_8k
+--- PASS: TestServerV2_Stress_8k (2.67s)
+PASS
+ok  	github.com/itzmeanjan/tseep/v2	3.234s
 ```
