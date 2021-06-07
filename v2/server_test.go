@@ -21,21 +21,13 @@ func TestServerV2(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to start TCP server : %s\n", err.Error())
 	}
-	defer func() {
-		server.Watcher.Close()
-		server.Listener.Close()
-	}()
 
 	testClientFlow(t, ctx, proto, server.Addr)
 	cancel()
 }
 
 func testClientFlow(t *testing.T, ctx context.Context, proto string, addr string) {
-	d := net.Dialer{
-		Timeout:  10 * time.Second,
-		Deadline: time.Now().Add(20 * time.Second),
-	}
-	conn, err := d.DialContext(ctx, proto, addr)
+	conn, err := net.Dial(proto, addr)
 	if err != nil {
 		t.Fatalf("Failed to dial TCP server : %s\n", err.Error())
 	}

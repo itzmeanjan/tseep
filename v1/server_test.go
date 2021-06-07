@@ -27,11 +27,7 @@ func TestServerV1(t *testing.T) {
 }
 
 func testClientFlow(t *testing.T, ctx context.Context, proto string, addr string) {
-	d := net.Dialer{
-		Timeout:  10 * time.Second,
-		Deadline: time.Now().Add(20 * time.Second),
-	}
-	conn, err := d.DialContext(ctx, proto, addr)
+	conn, err := net.Dial(proto, addr)
 	if err != nil {
 		t.Fatalf("Failed to dial TCP server : %s\n", err.Error())
 	}
