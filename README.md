@@ -20,9 +20,11 @@ In this project I experiment with mainly aforementioned two kinds of writing TCP
 
 > Before running any of following tests you've to probably increase open file limit on your system or you'll see `too many open files` error.
 
-- [**v1**](#v1) - TCP server with one go-routine listening for new connections & each connection being handled in its own go-routine.
+- [**v1**](#-v1-) - TCP server with one go-routine listening for new connections & each connection being handled in its own go-routine.
 
-- [**v2**](#v2) - TCP server with one go-routine listening for new connections & another watching READ, WRITE events on accepted connection's file descriptors
+- [**v2**](#-v2-) - TCP server with one go-routine listening for new connections & another watching READ, WRITE events on accepted connection's file descriptors
+
+- [**v3**](#-v3-) - Also experimented with multiple go-routines watching different event loops; each newly accepted connection is delegated to any one of these watcher for rest of their life time. _In simple terms, this is a generic version of **v2**, where I use N go-routines for watching, where N > 1. In v2, N = 1._
 
 ### :: v1 ::
 
@@ -40,7 +42,7 @@ PASS
 ok  	github.com/itzmeanjan/tseep/v1	0.316s
 ```
 
-- Run benchmarking, 8 rounds
+- Run parallel benchmarking, 8 rounds
 
 ```bash
 go test -v -run=xxx -bench V1 -count 8
@@ -130,4 +132,43 @@ popd
 --- PASS: TestServerV2_Stress_8k (2.67s)
 PASS
 ok  	github.com/itzmeanjan/tseep/v2	3.234s
+```
+
+### :: v3 ::
+
+- Run test with
+
+```bash
+pushd v3
+go test -v
+```
+
+```bash
+=== RUN   TestServerV3
+--- PASS: TestServerV3 (0.00s)
+PASS
+ok  	github.com/itzmeanjan/tseep/v3	0.593s
+```
+
+- Run 8 rounds of parallel benchmarking, where **8** go-routines used for watching 8 kernel event loop, each managing a subset of total accepted connections
+
+```bash
+go test --run=xxx -bench V3 -count 8
+```
+
+```bash
+goos: darwin
+goarch: amd64
+pkg: github.com/itzmeanjan/tseep/v3
+cpu: Intel(R) Core(TM) i5-8279U CPU @ 2.40GHz
+BenchmarkServerV3-8   	   39541	     29209 ns/op	  70.73 MB/s	    5716 B/op	      74 allocs/op
+BenchmarkServerV3-8   	   39259	     29116 ns/op	  70.96 MB/s	    5714 B/op	      74 allocs/op
+BenchmarkServerV3-8   	   40550	     29216 ns/op	  70.71 MB/s	    5714 B/op	      74 allocs/op
+BenchmarkServerV3-8   	   40640	     29507 ns/op	  70.02 MB/s	    5713 B/op	      74 allocs/op
+BenchmarkServerV3-8   	   38982	     31441 ns/op	  65.71 MB/s	    5713 B/op	      74 allocs/op
+BenchmarkServerV3-8   	   36420	     32439 ns/op	  63.69 MB/s	    5714 B/op	      74 allocs/op
+BenchmarkServerV3-8   	   37038	     32846 ns/op	  62.90 MB/s	    5715 B/op	      74 allocs/op
+BenchmarkServerV3-8   	   37333	     32611 ns/op	  63.35 MB/s	    5714 B/op	      74 allocs/op
+PASS
+ok  	github.com/itzmeanjan/tseep/v3	12.929s
 ```
