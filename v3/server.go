@@ -115,7 +115,7 @@ func (s *Server) Listen(ctx context.Context, done chan struct{}) {
 				return
 			}
 
-			nextWatcher = (nextWatcher + 1) * s.WatcherCount
+			nextWatcher = (nextWatcher + 1) % s.WatcherCount
 
 		}
 	}
