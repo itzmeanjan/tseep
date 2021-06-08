@@ -1,7 +1,9 @@
 package v3
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"log"
 	"net"
 	"sync"
@@ -68,4 +70,134 @@ func (s *Server) Listen(ctx context.Context, done chan struct{}) {
 
 		}
 	}
+}
+
+func (s *Server) Watch(ctx context.Context, id uint, done chan struct{}) {
+	done <- struct{}{}
+	watcher := s.Watchers[id]
+	defer func() {
+		if err := watcher.eventPool.Close(); err != nil {
+			log.Printf("Failed to close watcher : %s [ %d ]\n", err.Error(), id)
+		}
+	}()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+
+		default:
+			results, err := watcher.eventPool.WaitIO()
+			if err != nil {
+				return
+			}
+
+			for _, result := range results {
+				switch result.Operation {
+				case gaio.OpRead:
+					if err := s.handleRead(ctx, result, watcher); err != nil {
+						watcher.lock.Lock()
+						delete(watcher.inProgressRead, result.Conn)
+						watcher.lock.Unlock()
+
+						watcher.eventPool.Free(result.Conn)
+					}
+
+				case gaio.OpWrite:
+					if err := s.handleWrite(ctx, result, watcher); err != nil {
+						watcher.lock.Lock()
+						delete(watcher.inProgressRead, result.Conn)
+						watcher.lock.Unlock()
+
+						watcher.eventPool.Free(result.Conn)
+					}
+
+				}
+			}
+		}
+	}
+}
+
+func (s *Server) handleRead(ctx context.Context, result gaio.OpResult, watcher *watcher) error {
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.Size == 0 {
+		return errors.New("empty read")
+	}
+
+	watcher.lock.RLock()
+	defer watcher.lock.RUnlock()
+	v := watcher.inProgressRead[result.Conn]
+	if !v.envelopeRead {
+		r := bytes.NewReader(result.Buffer[:])
+		opcode, bodyLen, err := op.ReadEnvelope(r)
+		if err != nil {
+			return err
+		}
+
+		v.opcode = opcode
+		v.envelopeRead = true
+
+		v.allocator.Return()
+		return watcher.eventPool.Read(ctx, result.Conn, v.allocator.Allocate(uint64(bodyLen)))
+	}
+
+	r := bytes.NewReader(result.Buffer[:])
+	w := new(bytes.Buffer)
+
+	switch v.opcode {
+	case op.READ:
+		rReq := new(op.ReadRequest)
+		if _, err := rReq.ReadFrom(r); err != nil {
+			return err
+		}
+
+		s.KVLock.RLock()
+		val, ok := s.KV[*rReq.Key]
+		if !ok {
+			val = op.Value([]byte(""))
+		}
+		s.KVLock.RUnlock()
+
+		if _, err := val.WriteTo(w); err != nil {
+			return err
+		}
+
+	case op.WRITE:
+		wReq := new(op.WriteRequest)
+		if _, err := wReq.ReadFrom(r); err != nil {
+			return err
+		}
+
+		s.KVLock.Lock()
+		s.KV[*wReq.Key] = *wReq.Value
+		s.KVLock.Unlock()
+
+		if _, err := wReq.Value.WriteTo(w); err != nil {
+			return err
+		}
+
+	default:
+		return errors.New("bad opcode")
+
+	}
+
+	v.allocator.Return()
+	return watcher.eventPool.Write(ctx, result.Conn, w.Bytes())
+}
+
+func (s *Server) handleWrite(ctx context.Context, result gaio.OpResult, watcher *watcher) error {
+	if result.Error != nil {
+		return result.Error
+	}
+
+	watcher.lock.RLock()
+	defer watcher.lock.RUnlock()
+
+	v := watcher.inProgressRead[result.Conn]
+	v.envelopeRead = false
+
+	return watcher.eventPool.Read(ctx, result.Conn, v.allocator.Allocate(3))
 }
