@@ -35,6 +35,55 @@ type readingState struct {
 	opcode       op.OP
 }
 
+func New(ctx context.Context, proto string, addr string, watcherCount uint) (*Server, error) {
+	lis, err := net.Listen(proto, addr)
+	if err != nil {
+		return nil, err
+	}
+
+	srv := Server{
+		KV:           make(map[op.Key]op.Value),
+		KVLock:       &sync.RWMutex{},
+		Addr:         lis.Addr().String(),
+		Listener:     lis,
+		Pool:         pool.New(1<<16, 1<<24, 1<<4),
+		WatcherCount: watcherCount,
+		Watchers:     make(map[uint]*watcher),
+	}
+
+	watcherChan := make(chan struct{}, watcherCount)
+	var i uint
+	for ; i < srv.WatcherCount; i++ {
+		w, err := gaio.NewWatcher()
+		if err != nil {
+			return nil, err
+		}
+
+		srv.Watchers[i] = &watcher{
+			eventPool:      w,
+			inProgressRead: make(map[net.Conn]*readingState),
+			lock:           &sync.RWMutex{},
+		}
+		func(id uint) {
+			go srv.Watch(ctx, id, watcherChan)
+		}(i)
+	}
+
+	lisChan := make(chan struct{})
+	go srv.Listen(ctx, lisChan)
+	<-lisChan
+
+	running := 0
+	for range watcherChan {
+		running++
+		if running >= int(watcherCount) {
+			break
+		}
+	}
+
+	return &srv, nil
+}
+
 func (s *Server) Listen(ctx context.Context, done chan struct{}) {
 	close(done)
 	defer func() {
