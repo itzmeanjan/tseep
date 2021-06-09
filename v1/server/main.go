@@ -29,4 +29,5 @@ func main() {
 
 	cancel()
 	<-time.After(time.Second)
+	log.Println("Graceful shutdown")
 }
