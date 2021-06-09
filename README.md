@@ -172,3 +172,17 @@ BenchmarkServerV3-8   	   37333	     32611 ns/op	  63.35 MB/s	    5714 B/op	    
 PASS
 ok  	github.com/itzmeanjan/tseep/v3	12.929s
 ```
+
+- Doing stress testing with {1k, 2k, 4k, 8k} concurrent connections
+
+```bash
+go test -v -tags stress -run=8k
+popd
+```
+
+```bash
+=== RUN   TestServerV3_Stress_8k
+--- PASS: TestServerV3_Stress_8k (2.55s)
+PASS
+ok  	github.com/itzmeanjan/tseep/v3	2.686s
+```
