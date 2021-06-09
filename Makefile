@@ -11,3 +11,12 @@ build_v1_client:
 
 run_v1_client: build_v1_client
 	./v1_client
+
+docker_build_v1_server:
+	docker build -t v1_server -f v1/server/Dockerfile .
+
+docker_run_v1_server:
+	docker run --name v1_server -d --env-file v1_server.env v1_server
+
+docker_stop_v1_server:
+	docker stop v1_server
