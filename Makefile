@@ -20,3 +20,12 @@ docker_run_v1_server:
 
 docker_stop_v1_server:
 	docker stop v1_server
+
+docker_build_client:
+	docker build -t client -f client/Dockerfile .
+
+docker_run_client:
+	docker run --name client -d --env-file client.env client
+
+docker_stop_client:
+	docker stop client
