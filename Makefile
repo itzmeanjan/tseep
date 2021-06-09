@@ -21,6 +21,15 @@ docker_run_v1_server:
 docker_stop_v1_server:
 	docker stop v1_server
 
+docker_build_v2_server:
+	docker build -t v2_server -f v2/server/Dockerfile .
+
+docker_run_v2_server:
+	docker run --name v2_server -d --env-file v2_server.env v2_server
+
+docker_stop_v2_server:
+	docker stop v1_server
+
 docker_build_client:
 	docker build -t client -f client/Dockerfile .
 
