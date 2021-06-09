@@ -37,19 +37,22 @@ func main() {
 	interruptChan := make(chan os.Signal, 1)
 	signal.Notify(interruptChan, syscall.SIGTERM, syscall.SIGINT)
 
+OUTER:
 	for {
 		select {
 		case <-interruptChan:
-			return
+			break OUTER
 
 		default:
 			if !read_write(clients, interruptChan) {
-				return
+				break OUTER
 			}
 
 			<-time.After(delay)
 		}
 	}
+
+	log.Println("Graceful shutdown")
 }
 
 func read_write(clients []net.Conn, stopChan chan os.Signal) bool {
@@ -62,9 +65,9 @@ OUTER:
 		default:
 			r := rand.Intn(1 << 30)
 
-			switch r%2 == 0 {
+			switch r%3 == 0 {
 			case true:
-				key := op.Key(fmt.Sprintf("%255d", r))
+				key := op.Key(fmt.Sprintf("%d", r))
 				req := op.ReadRequest{Key: &key}
 				if _, err := req.WriteEnvelope(conn); err != nil {
 					log.Printf("Failed to write request envelope : %s\n", err.Error())
@@ -82,11 +85,11 @@ OUTER:
 					continue OUTER
 				}
 
-				log.Printf("Read %s => %s [%s]\n", key, *resp, conn.LocalAddr())
+				log.Printf("Read %s => `%s` [%s]\n", key, *resp, conn.LocalAddr())
 
 			case false:
-				key := op.Key(fmt.Sprintf("%255d", r))
-				val := op.Value(fmt.Sprintf("%255d", r))
+				key := op.Key(fmt.Sprintf("%d", r))
+				val := op.Value(fmt.Sprintf("%d", r))
 				req := op.WriteRequest{Key: &key, Value: &val}
 				if _, err := req.WriteEnvelope(conn); err != nil {
 					log.Printf("Failed to write request envelope : %s\n", err.Error())
