@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gammazero/workerpool"
 	"github.com/itzmeanjan/tseep/op"
 	"github.com/itzmeanjan/tseep/utils"
 )
@@ -56,62 +57,72 @@ OUTER:
 }
 
 func read_write(clients []net.Conn, stopChan chan os.Signal) bool {
-OUTER:
+	wp := workerpool.New(int(utils.GetConcurrency()))
+	defer func() {
+		wp.Stop()
+	}()
+
 	for _, conn := range clients {
 		select {
 		case <-stopChan:
 			return false
 
 		default:
-			r := rand.Intn(1 << 30)
+			func(conn net.Conn) {
+				wp.Submit(func() {
+					r := rand.Intn(1 << 30)
 
-			switch r%3 == 0 {
-			case true:
-				key := op.Key(fmt.Sprintf("%d", r))
-				req := op.ReadRequest{Key: &key}
-				if _, err := req.WriteEnvelope(conn); err != nil {
-					log.Printf("Failed to write request envelope : %s\n", err.Error())
-					continue OUTER
-				}
+					switch r%3 == 0 {
+					case true:
+						key := op.Key(fmt.Sprintf("%d", r))
+						req := op.ReadRequest{Key: &key}
+						if _, err := req.WriteEnvelope(conn); err != nil {
+							log.Printf("Failed to write request envelope : %s\n", err.Error())
+							return
+						}
 
-				if _, err := req.WriteTo(conn); err != nil {
-					log.Printf("Failed to write request body : %s\n", err.Error())
-					continue OUTER
-				}
+						if _, err := req.WriteTo(conn); err != nil {
+							log.Printf("Failed to write request body : %s\n", err.Error())
+							return
+						}
 
-				resp := new(op.Value)
-				if _, err := resp.ReadFrom(conn); err != nil {
-					log.Printf("Failed to read response : %s\n", err.Error())
-					continue OUTER
-				}
+						resp := new(op.Value)
+						if _, err := resp.ReadFrom(conn); err != nil {
+							log.Printf("Failed to read response : %s\n", err.Error())
+							return
+						}
 
-				log.Printf("Read %s => `%s` [%s]\n", key, *resp, conn.LocalAddr())
+						log.Printf("Read %s => `%s` [%s]\n", key, *resp, conn.LocalAddr())
 
-			case false:
-				key := op.Key(fmt.Sprintf("%d", r))
-				val := op.Value(fmt.Sprintf("%d", r))
-				req := op.WriteRequest{Key: &key, Value: &val}
-				if _, err := req.WriteEnvelope(conn); err != nil {
-					log.Printf("Failed to write request envelope : %s\n", err.Error())
-					continue OUTER
-				}
+					case false:
+						key := op.Key(fmt.Sprintf("%d", r))
+						val := op.Value(fmt.Sprintf("%d", r))
+						req := op.WriteRequest{Key: &key, Value: &val}
+						if _, err := req.WriteEnvelope(conn); err != nil {
+							log.Printf("Failed to write request envelope : %s\n", err.Error())
+							return
+						}
 
-				if _, err := req.WriteTo(conn); err != nil {
-					log.Printf("Failed to write request body : %s\n", err.Error())
-					continue OUTER
-				}
+						if _, err := req.WriteTo(conn); err != nil {
+							log.Printf("Failed to write request body : %s\n", err.Error())
+							return
+						}
 
-				resp := new(op.Value)
-				if _, err := resp.ReadFrom(conn); err != nil {
-					log.Printf("Failed to read response : %s\n", err.Error())
-					continue OUTER
-				}
+						resp := new(op.Value)
+						if _, err := resp.ReadFrom(conn); err != nil {
+							log.Printf("Failed to read response : %s\n", err.Error())
+							return
+						}
 
-				log.Printf("Wrote %s => %s [%s]\n", key, *resp, conn.LocalAddr())
+						log.Printf("Wrote %s => %s [%s]\n", key, *resp, conn.LocalAddr())
 
-			}
+					}
+				})
+			}(conn)
+
 		}
 	}
 
+	wp.StopWait()
 	return true
 }

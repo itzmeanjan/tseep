@@ -43,3 +43,13 @@ func GetDelay() time.Duration {
 
 	return time.Second
 }
+
+func GetConcurrency() uint64 {
+	if con, ok := os.LookupEnv("CONCURRENCY"); ok {
+		if parsed, err := strconv.ParseUint(con, 10, 64); err == nil {
+			return parsed
+		}
+	}
+
+	return 8
+}
