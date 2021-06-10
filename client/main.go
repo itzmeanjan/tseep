@@ -70,7 +70,7 @@ func read_write(clients []net.Conn, stopChan chan os.Signal) bool {
 		default:
 			func(conn net.Conn) {
 				wp.Submit(func() {
-					r := rand.Intn(1 << 30)
+					r := rand.Intn(1 << 10)
 
 					switch r%3 == 0 {
 					case true:

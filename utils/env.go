@@ -53,3 +53,13 @@ func GetConcurrency() uint64 {
 
 	return 8
 }
+
+func GetWatcherCount() uint {
+	if wc, ok := os.LookupEnv("WATCHER_COUNT"); ok {
+		if parsed, err := strconv.ParseUint(wc, 10, 64); err == nil {
+			return uint(parsed)
+		}
+	}
+
+	return 8
+}
