@@ -302,5 +302,5 @@ bash stop_client.sh
 - Start again
 
 ```bash
-bash prepare_client.sh
+bash start_client.sh
 ```
