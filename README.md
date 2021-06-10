@@ -186,3 +186,121 @@ popd
 PASS
 ok  	github.com/itzmeanjan/tseep/v3	2.686s
 ```
+
+## Dockerised Setup
+
+- Building `v{1, 2, 3}_server` docker image
+
+```bash
+make docker_build_v1_server
+make docker_build_v2_server
+make docker_build_v3_server
+```
+
+> Note : Probably you don't want to run all `v{1, 2, 3}_server` together. It's prefectly okay to do so, but you also have to change `client.env`'s **ADDR** field.
+
+---
+
+### v1_server
+
+- First time running v1_server
+
+```bash
+make docker_run_v1_server
+```
+
+- For next runs of v1_server, after it was stopped once
+
+```bash
+docker start v1_server
+```
+
+- Stopping v1_server
+
+```bash
+make docker_stop_v1_server
+```
+
+---
+
+### v2_server
+
+- First time running v2_server
+
+```bash
+make docker_run_v2_server
+```
+
+- For next runs of v2_server, after it was stopped once
+
+```bash
+docker start v2_server
+```
+
+- Stopping v2_server
+
+```bash
+make docker_stop_v2_server
+```
+
+---
+
+### v3_server
+
+- First time running v3_server
+
+```bash
+make docker_run_v3_server
+```
+
+- For next runs of v3_server, after it was stopped once
+
+```bash
+docker start v3_server
+```
+
+- Stopping v3_server
+
+```bash
+make docker_stop_v3_server
+```
+
+---
+
+### client
+
+- Building client docker image
+
+```bash
+make docker_build_client
+```
+
+- Run a single client container
+
+```bash
+make docker_run_client
+```
+
+- Stop single client container
+
+```bash
+make docker_stop_client
+```
+
+- For running 100k concurrent connection test, you should skip last two steps & rather follow this step, for starting containers first time
+
+```bash
+bash prepare_client.sh
+```
+
+- Stop them all
+
+```bash
+bash stop_client.sh
+```
+
+- Start again
+
+```bash
+bash prepare_client.sh
+```
